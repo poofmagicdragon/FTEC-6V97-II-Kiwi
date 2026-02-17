@@ -1,6 +1,5 @@
 from typing import List
 
-from flask import current_app
 from sqlalchemy.exc import IntegrityError
 
 from app.db import db
@@ -23,9 +22,7 @@ def get_user_by_username(username: str) -> User | None:
 
 def get_all_users() -> List[User]:
     try:
-        current_app.logger.info('Retrieving all users from the database')
         users = db.session.query(User).all()
-        current_app.logger.info(f'Retrieved {len(users)} users')
         return users
     except Exception as e:
         db.session.rollback()
@@ -44,11 +41,12 @@ def update_user_balance(username: str, new_balance: float):
         raise UnsupportedUserOperationError(f'Failed to update user balance due to error: {str(e)}')
 
 
-def create_user(username: str, firstname: str, lastname: str, balance: float):
+def create_user(username: str, password: str, firstname: str, lastname: str, balance: float):
     try:
         db.session.add(
             User(
                 username=username,
+                password=password,
                 firstname=firstname,
                 lastname=lastname,
                 balance=balance,

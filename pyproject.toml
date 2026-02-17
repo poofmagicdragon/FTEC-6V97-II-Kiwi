@@ -24,27 +24,18 @@ omit = [
     "*/__pycache__/*",
     "*/venv/*",
     "*/env/*",
-    "*/.venv/*",
-    "app/log/*",
+    "*/.venv/*"
 ]
 
 [tool.coverage.report]
 exclude_lines = [
     "pragma: no cover",
     "def __repr__",
-    "def __str__",
     "raise AssertionError",
     "raise NotImplementedError",
     "if __name__ == .__main__.:",
     "if TYPE_CHECKING:",
-    "@abstractmethod",
-    # Exclude logging
-    "current_app\\.logger\\.",
-    "app\\.logger\\.",
-    "logger\\.debug",
-    "logger\\.info", 
-    "logger\\.warning",
-    "logger\\.error",
+    "@abstractmethod"
 ]
 
 [tool.coverage.html]

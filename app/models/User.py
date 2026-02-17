@@ -16,6 +16,7 @@ class User(db.Model):
     __tablename__ = 'user'
 
     username: Mapped[str] = mapped_column(String(30), primary_key=True)
+    password: Mapped[str] = mapped_column(String(30), nullable=False)
     firstname: Mapped[str] = mapped_column(String(30), nullable=False)
     lastname: Mapped[str] = mapped_column(String(30), nullable=False)
     balance: Mapped[float] = mapped_column(Float, nullable=False)
@@ -30,6 +31,7 @@ class User(db.Model):
             self,
             *,
             username: str,
+            password: str,
             firstname: str,
             lastname: str,
             balance: float,

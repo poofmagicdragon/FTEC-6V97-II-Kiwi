@@ -40,13 +40,30 @@ class Portfolio(db.Model):
     def __str__(self):
         user_str = getattr(self, 'user', None)
         username = user_str.username if user_str else 'N/A'
-        return f'<Portfolio: id={self.id}; name={self.name}; description={self.description}; user={username}; #investments={len(self.investments)}>'
+        investments = []
+        for investment in self.investments:
+            investments.append(
+                {
+                    'ticker': investment.ticker,
+                    'quantity': investment.quantity,
+                }
+            )
+        return f'<Portfolio: id={self.id}; name={self.name}; description={self.description}; user={username}; investments={", ".join(investments)}>'
 
     def __to_dict__(self):
+        investments = []
+        for investment in self.investments:
+            investments.append(
+                {
+                    'ticker': investment.ticker,
+                    'quantity': investment.quantity,
+                }
+            )
         return {
             'id': self.id,
             'name': self.name,
             'description': self.description,
             'owner': self.owner,
             'investments_count': len(self.investments),
+            'investments': investments,
         }

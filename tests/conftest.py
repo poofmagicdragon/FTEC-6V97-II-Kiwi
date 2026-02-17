@@ -2,133 +2,71 @@ from __future__ import annotations
 
 import sys
 from pathlib import Path
-from typing import Generator
-
-import pytest
-from flask import Flask
-from flask.testing import FlaskClient
-from flask_sqlalchemy.session import Session
-from sqlalchemy.orm import scoped_session
-
-from app import create_app
-from app.auth import CognitoTokenValidator
-from app.config import get_config
-from app.db import db
-from app.models import User
-from app.service import alpha_vantage_client
-from app.service.alpha_vantage_client import SecurityQuote
 
 project_root = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(project_root))
+from typing import Generator
+
+import app.database as db
+import pytest
+from app.database import Base
+from sqlalchemy import create_engine
+from sqlalchemy.orm import Session, sessionmaker
+
+from app.models import Security, User
 
 
 @pytest.fixture(scope='session')
-def app() -> Generator[Flask, None, None]:
-    test_config = get_config('test')
-    test_app = create_app(test_config)
-    # configure authentication
-    cognito_validator = CognitoTokenValidator(
-        region=test_app.config['COGNITO_REGION'],
-        user_pool_id=test_app.config['COGNITO_USER_POOL_ID'],
-        app_client_id=test_app.config['COGNITO_APP_CLIENT_ID'],
-    )
-    test_app.config['COGNITO_VALIDATOR'] = cognito_validator
-    with test_app.app_context():
-        db.create_all()
-        _populate_database()
-        yield test_app
-        db.session.remove()
-        db.drop_all()
+def engine():
+    """
+    create an in-memory database that is available for use in the entire test session.
+    initialize the database with tables.
+    """
+    eng = create_engine('sqlite+pysqlite:///:memory:', future=True, echo=False)
+
+    # initialize all database objects
+    Base.metadata.create_all(eng)
+
+    yield eng
+    eng.dispose()
 
 
-@pytest.fixture(scope='function', autouse=True)
-def mock_auth(app, monkeypatch):
-    validator = app.config['COGNITO_VALIDATOR']
-    monkeypatch.setattr('app.auth.get_token_from_header', lambda: 'token1234')
-
-    def mock_validate(token):
-        return {
-            'sub': 'user-abc',
-            'username': 'test_user',
-            'email': 'test@test.com',
-            'exp': 1234567890,
-            'token_use': 'access',
-            'custom_field': 'custom_value',
-        }
-
-    if validator is not None:
-        monkeypatch.setattr(validator, 'validate_token', mock_validate)
+@pytest.fixture(scope='session')
+def connection(engine):
+    with engine.connect() as conn:
+        yield conn
 
 
 @pytest.fixture(scope='function')
-def client(app) -> FlaskClient:
-    return app.test_client()
+def db_session(connection, monkeypatch) -> Generator[Session]:
+    trans = connection.begin()
 
+    TestingSessionLocal = sessionmaker(bind=connection, autoflush=False, autocommit=False, expire_on_commit=False)
 
-@pytest.fixture(scope='function')
-def db_session(app, monkeypatch) -> Generator[scoped_session[Session], None, None]:
-    with app.app_context():
-        connection = db.engine.connect()
-        trans = connection.begin()
+    session = TestingSessionLocal()
+    _populate_database(session)
 
-        test_session = scoped_session(db.session.session_factory)
-        test_session.configure(bind=connection)
-        test_session.__setattr__('tag', 'test_session')
+    monkeypatch.setattr(db, 'get_session', lambda: session, raising=True)
 
-        def mock_commit():
-            test_session.flush()
-
-        monkeypatch.setattr(db, 'session', test_session, raising=True)
-        monkeypatch.setattr(test_session, 'commit', mock_commit)
-        monkeypatch.setattr(test_session, 'close', lambda: None)
-
-        yield test_session
-
-        test_session.remove()
-        trans.rollback()
-        connection.close()
-
-
-@pytest.fixture(scope='function')
-def mock_alpha_vantage(monkeypatch):
-    def mock_get_quote(ticker: str) -> SecurityQuote | None:
-        mock_data = {
-            'AAPL': SecurityQuote(ticker='AAPL', issuer='Apple Inc.', price=150.00, date='2026-01-08'),
-            'GOOGL': SecurityQuote(ticker='GOOGL', issuer='Alphabet Inc.', price=2800.00, date='2026-01-08'),
-            'MSFT': SecurityQuote(ticker='MSFT', issuer='Microsoft Corp.', price=300.00, date='2026-01-08'),
-            'TSLA': SecurityQuote(ticker='TSLA', issuer='Tesla Inc.', price=700.00, date='2026-01-08'),
-        }
-        return mock_data.get(ticker.upper())
-
-    monkeypatch.setattr(alpha_vantage_client, 'get_quote', mock_get_quote)
-    return mock_get_quote
-
-
-@pytest.fixture(scope='function')
-def mock_alpha_vantage_response():
-    def _create_mock(response_data: dict):
-        class MockResponse:
-            def raise_for_status(self):
-                pass
-
-            def json(self):
-                return response_data
-
-        return MockResponse()
-
-    return _create_mock
-
-
-def _populate_database():
     try:
-        admin_user = User(
-            username='admin',
-            firstname='Admin',
-            lastname='User',
-            balance=1000.00,
-        )
-        db.session.add(admin_user)
-    except Exception:
-        db.session.rollback()
+        yield session
     finally:
-        db.session.commit()
+        trans.rollback()
+        session.close()
+
+
+def _populate_database(session):
+    try:
+        admin_user = User(username='admin', password='admin', firstname='Admin', lastname='User', balance=1000.00)
+        session.add(admin_user)
+
+        securities = [
+            Security(ticker='AAPL', issuer='Apple Inc.', price=150.00),
+            Security(ticker='GOOGL', issuer='Alphabet Inc.', price=2800.00),
+            Security(ticker='MSFT', issuer='Microsoft Corp.', price=300.00),
+        ]
+        session.add_all(securities)
+    except Exception:
+        session.rollback()
+    finally:
+        session.commit()

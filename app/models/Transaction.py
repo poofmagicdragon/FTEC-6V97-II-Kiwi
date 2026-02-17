@@ -8,7 +8,7 @@ from app.db import db
 
 if TYPE_CHECKING:
     # imports that are used only for type checking to avoid circular dependencies
-    from app.models import Portfolio, User
+    from app.models import Portfolio, Security, User
 
 
 class Transaction(db.Model):
@@ -16,7 +16,7 @@ class Transaction(db.Model):
     transaction_id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     username: Mapped[str] = mapped_column(String(30), ForeignKey('user.username'), nullable=False)
     portfolio_id: Mapped[int] = mapped_column(Integer, ForeignKey('portfolio.id'), nullable=False)
-    ticker: Mapped[str] = mapped_column(String(30), nullable=False)
+    ticker: Mapped[str] = mapped_column(String(30), ForeignKey('security.ticker'), nullable=False)
     transaction_type: Mapped[str] = mapped_column(String(10), nullable=False)
     quantity: Mapped[int] = mapped_column(Integer, nullable=False)
     price: Mapped[float] = mapped_column(Float, nullable=False)
@@ -27,6 +27,12 @@ class Transaction(db.Model):
         'Portfolio',
         back_populates='transactions',
         foreign_keys=[portfolio_id],
+        lazy='selectin',
+    )
+    security: Mapped['Security'] = relationship(
+        'Security',
+        back_populates='transactions',
+        foreign_keys=[ticker],
         lazy='selectin',
     )
 
