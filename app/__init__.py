@@ -1,14 +1,63 @@
-from flask import Flask, jsonify
-from pydantic import ValidationError
+import datetime
+import logging
+import sys
+import uuid
+from logging.handlers import RotatingFileHandler
+from zoneinfo import ZoneInfo
+
+from flask import Flask, g, jsonify, request
+
+from flask_caching import Cache
 
 from app.db import db
+from app.log.RequestIdFilter import RequestIdFilter
 from app.routes import portfolio_bp, security_bp, trade_bp, user_bp
+#from app.routes.domain.response_schema import ErrorResponse
 
+cache = Cache()
 
 def create_app(config):
     try:
         app = Flask(__name__)
         app.config.from_object(config)
+
+        # configure and register the cache object
+        app.config['CACHE_TYPE'] = 'simple'
+        app.config['CACHE_DEFAULT_TIMEOUT'] = 300
+
+        cache.init_app(app) # we register this cache object to this flask application
+
+        # configure the logging pattern for this application
+        with app.app_context():
+            if app.debug or app.testing:
+                handler = logging.StreamHandler(sys.stdout)
+                handler.setLevel(logging.DEBUG)
+            else:
+                handler = RotatingFileHandler('app.log', maxBytes = 100000, backupCount = 10)
+                handler.setLevel(logging.INFO)
+            
+            formatter = logging.Formatter(
+                '%(asctime)s %(levelname)s %(request_id)s: %(message)s (in %(modules)s: %(lineno)d)'
+            )
+        
+        @app.before_request
+        def before_request():
+            g.request_id = str(uuid.uuid4())
+            g.start_time = datetime.datetime.now(ZoneInfo('America/New_York'))
+            app.logger.info(f'New request ({g.request_id}): @{request.method} {request.host}{request.path}')
+
+        @app.after_request
+        def after_request(response):
+            g.end_time = datetime.datetime.now(ZoneInfo('America/New_York'))
+            duration = g.end_time - g.start_time
+            app.logger.info(f'Request with ID {g.request_id} completed in {duration} seconds.')
+            return response
+        
+        # @app.errorhandler(Exception)
+        # def error_handler(e):
+        #     db.session.rollback()
+        #     error = ErrorResponse(error_message = str(e), request_id = g.request_id)
+        #     return jsonify(error.modeul_dump()), 500
 
         # register extensions
         db.init_app(app)
