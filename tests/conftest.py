@@ -7,9 +7,9 @@ project_root = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(project_root))
 from typing import Generator
 
-import app.database as db
+import app.db as db
 import pytest
-from app.database import Base
+from app.db import Base
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session, sessionmaker
 

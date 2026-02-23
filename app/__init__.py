@@ -4,6 +4,7 @@ import sys
 import uuid
 from logging.handlers import RotatingFileHandler
 from zoneinfo import ZoneInfo
+from pydantic import ValidationError
 
 from flask import Flask, g, jsonify, request
 
@@ -12,7 +13,8 @@ from flask_caching import Cache
 from app.db import db
 from app.log.RequestIdFilter import RequestIdFilter
 from app.routes import portfolio_bp, security_bp, trade_bp, user_bp
-#from app.routes.domain.response_schema import ErrorResponse
+from app.routes.domain.response_schema import ErrorResponse
+
 
 cache = Cache()
 
@@ -37,7 +39,7 @@ def create_app(config):
                 handler.setLevel(logging.INFO)
             
             formatter = logging.Formatter(
-                '%(asctime)s %(levelname)s %(request_id)s: %(message)s (in %(modules)s: %(lineno)d)'
+                '%(asctime)s %(levelname)s %(request_id)s: %(message)s (in %(module)s: %(lineno)d)'
             )
         
         @app.before_request
@@ -53,12 +55,28 @@ def create_app(config):
             app.logger.info(f'Request with ID {g.request_id} completed in {duration} seconds.')
             return response
         
-        # @app.errorhandler(Exception)
-        # def error_handler(e):
-        #     db.session.rollback()
-        #     error = ErrorResponse(error_message = str(e), request_id = g.request_id)
-        #     return jsonify(error.modeul_dump()), 500
 
+        @app.errorhandler(ValidationError)
+        def handle_validation_error(error):
+            first_error = error.errors()[0]
+            error_message = f"{first_error['loc'][0]}: {first_error['msg']}"
+
+            response = ErrorResponse(
+                error=error_message,
+                detail=error.errors(),
+                request_id=getattr(g, "request_id", None)
+            )
+
+            return jsonify(response.model_dump()), 422
+        
+        @app.errorhandler(Exception)
+        def error_handler(e):
+            db.session.rollback()
+            error = ErrorResponse(error = str(e), request_id = g.request_id)
+            return jsonify(error.model_dump()), 500
+        
+
+            
         # register extensions
         db.init_app(app)
 

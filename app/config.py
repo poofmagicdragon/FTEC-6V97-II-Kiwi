@@ -16,7 +16,7 @@ class TestConfig(Config):
 
 
 class DevelopmentConfig(Config):
-    SQLALCHEMY_DATABASE_URI = 'mysql+pymysql://kiwi_local:kiwilocaldb@localhost:3306/kiwilocal'
+    SQLALCHEMY_DATABASE_URI = 'mysql+pymysql://root:kiwirootdb@localhost:3306/kiwilocal2'
     DEBUG = True
     SQLALCHEMY_ECHO = True
     ALPHA_VANTAGE_BASE_URL = "https://www.alphavantage.co"
