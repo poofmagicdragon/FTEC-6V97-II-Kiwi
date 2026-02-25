@@ -1,11 +1,10 @@
-from pydantic import BaseModel
-from typing import Any, Optional
+from pydantic import BaseModel, Field
+
 
 
 class ErrorResponse(BaseModel):
-    error: str
-    detail: Optional[Any] = None
-    request_id: Optional[str] = None
+    error_message: str = Field(..., description = 'Error message describing the issue')
+    request_id: str = Field(..., description = 'The id of the request as a reference for support')
 
 
 

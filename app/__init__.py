@@ -63,7 +63,6 @@ def create_app(config):
 
             response = ErrorResponse(
                 error=error_message,
-                detail=error.errors(),
                 request_id=getattr(g, "request_id", None)
             )
 
@@ -72,7 +71,7 @@ def create_app(config):
         @app.errorhandler(Exception)
         def error_handler(e):
             db.session.rollback()
-            error = ErrorResponse(error = str(e), request_id = g.request_id)
+            error = ErrorResponse(error_message = str(e), request_id = g.request_id)
             return jsonify(error.model_dump()), 500
         
 

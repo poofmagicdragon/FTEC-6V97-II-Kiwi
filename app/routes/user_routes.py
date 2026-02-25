@@ -3,6 +3,7 @@ from flask import Blueprint, jsonify, request
 import app.service.transaction_service as transaction_service
 import app.service.user_service as user_service
 from app.db import db
+from app.schemas.user_schemas import CreateUserSchema
 
 user_bp = Blueprint('user', __name__)
 
@@ -23,12 +24,12 @@ def get_user(username):
 
 @user_bp.route('/', methods=['POST'])
 def create_user():
-    req_data = request.get_json()
-    username = req_data['username']
-    password = req_data['password']
-    firstname = req_data['firstname']
-    lastname = req_data['lastname']
-    balance = req_data['balance']
+    req_data = CreateUserSchema(**request.get_json())
+    username = req_data.username
+    password = req_data.password
+    firstname = req_data.firstname
+    lastname = req_data.lastname
+    balance = req_data.balance
     user_service.create_user(
         username=username, password=password, firstname=firstname, lastname=lastname, balance=balance
     )

@@ -4,11 +4,13 @@ import app.service.portfolio_service as portfolio_service
 import app.service.transaction_service as transaction_service
 import app.service.user_service as user_service
 from app.db import db
+from app.schemas.portfolio_schemas import CreatePortfolioSchema
 
 portfolio_bp = Blueprint('portfolio', __name__)
 
 
 @portfolio_bp.route('/', methods=['GET'])
+@required_auth
 def get_all_portfolios():
     portfolios = portfolio_service.get_all_portfolios()
     return jsonify([portfolio.__to_dict__() for portfolio in portfolios]), 200
@@ -33,15 +35,15 @@ def get_portfolios_by_user(username):
 
 @portfolio_bp.route('/', methods=['POST'])
 def create_portfolio():
-    req_data = request.get_json()
-    username = req_data['username']
+    req_data = CreatePortfolioSchema(**request.get_json())
+    username = req_data.username
     user = user_service.get_user_by_username(username)
     if user is None:
         return jsonify({'error': f'User {username} not found'}), 404
     portfolio_id = portfolio_service.create_portfolio(
-        name=req_data['name'],
-        description=req_data['description'],
-        user=user,
+        name=req_data.name,
+        description=req_data.description,
+        user=user
     )
     db.session.commit()
     return jsonify({'message': 'Portfolio created successfully', 'portfolio_id': portfolio_id}), 201
