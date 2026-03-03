@@ -14,21 +14,23 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import Session, sessionmaker
 
 from app.models import Security, User
+from app.config import get_config
+from app import create_app
 
 
 @pytest.fixture(scope='session')
-def engine():
+def app():
     """
-    create an in-memory database that is available for use in the entire test session.
-    initialize the database with tables.
+    Create Flask test application using TestConfig.  Push an application context so Flask-SQLAlchemy works
     """
-    eng = create_engine('sqlite+pysqlite:///:memory:', future=True, echo=False)
-
-    # initialize all database objects
-    Base.metadata.create_all(eng)
-
-    yield eng
-    eng.dispose()
+    test_config = get_config("test")
+    app = create_app(test_config)
+    
+    with app.app_context():
+        db.create_all()
+        yield app
+        db.session.remove()
+        db.drop_all()
 
 
 @pytest.fixture(scope='session')

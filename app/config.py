@@ -13,6 +13,9 @@ class TestConfig(Config):
     TESTING = True
     SQLALCHEMY_DATABASE_URI = 'sqlite+pysqlite:///:memory:'
     SQLALCHEMY_ECHO = False
+    AWS_Region = 'dummy'
+    COGNITO_CLIENT_ID = 'dummy'
+    COGNITO_POOL_ID = 'dummy'
 
 
 class DevelopmentConfig(Config):
@@ -21,7 +24,9 @@ class DevelopmentConfig(Config):
     SQLALCHEMY_ECHO = True
     ALPHA_VANTAGE_BASE_URL = "https://www.alphavantage.co"
     ALPHA_VANTAGE_API_KEY = 'R9UVMH4XA8ZPITRT'
-
+    AWS_REGION = 'us-east-2'
+    COGNITO_CLIENT_ID = 'of5ua5id9tb9oi00ibi0u7t2m'
+    COGNITO_POOL_ID = 'us-east-2_pLOAUduYI'
 
 class ProductionConfig(Config):
     SQLALCHEMY_DATABASE_URI = os.environ.get('DATABASE_URL') or (

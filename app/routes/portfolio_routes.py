@@ -5,6 +5,7 @@ import app.service.transaction_service as transaction_service
 import app.service.user_service as user_service
 from app.db import db
 from app.schemas.portfolio_schemas import CreatePortfolioSchema
+from app.auth import required_auth
 
 portfolio_bp = Blueprint('portfolio', __name__)
 

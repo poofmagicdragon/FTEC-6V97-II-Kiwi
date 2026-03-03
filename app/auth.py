@@ -11,11 +11,10 @@ from app.routes.domain.response_schema import ErrorResponse
 
 
 class CognitoTokenValidator:
-    def __init__(self, region: str, user_pool_id: str, client_id: str, domain: str):
+    def __init__(self, region: str, user_pool_id: str, client_id: str):
         self.region = region
         self.user_pool_id = user_pool_id
         self.client_id = client_id
-        self.domain = domain
         self.issuer = f"https://cognito-idp.{region}.amazonaws.com/{user_pool_id}"
         self._jwks_url = f'{self.issuer}/.well-known/jwks.json'
         self._jwks = None
@@ -25,7 +24,7 @@ class CognitoTokenValidator:
         Get the public keys that are associated with the user pool.  These will be used everytime to verify the token signature
         '''
         if self._jwks is None:
-            response = requests.get(self.jwks_url)
+            response = requests.get(self._jwks_url)
             response.raise_for_status()
             self._jwks = response.json()
         pass 
@@ -42,7 +41,7 @@ class CognitoTokenValidator:
             # find the matching key from the jwks for the given key id
             jwks = self._get_jwks()
             for key in self._jwks.get("keys", []):
-                if key.get('kid') == kid
+                if key.get('kid') == kid:
                     return key
             return None
         except JWTError:
@@ -59,9 +58,10 @@ class CognitoTokenValidator:
                 signing_key,
                 algorithms = ['RS256'],
                 audience=self.client_id,
+                issuer = self.issuer,
                 options = {
                     'verify_signature': True,
-                    'verrify_exp': True,
+                    'verify_exp': True,
                     'verify_aud': True,
                     'verify_iss': True
                 }
@@ -94,12 +94,12 @@ def required_auth(f):
     def decorated_function(*args, **kwargs):
         token = get_token_from_header()
         if not token:
-            return jsonify(ErrorResponse('Missing authentication Token', request_id = '').model_dump, 401)
+            return jsonify(ErrorResponse(error_message = 'Missing authentication Token', request_id = '').model_dump()), 401
         
-        validator = current_app.config.get('COGNITO_Validator')
+        validator = current_app.config.get('COGNITO_VALIDATOR')
 
         if not validator:
-            return jsonify(ErrorResponse('Missing cognito token validator in the app configuration', request_id = '').model_dump, 500)
+            return jsonify(ErrorResponse(error_message = 'Missing cognito token validator in the app configuration', request_id = '').model_dump()), 500
         
         try:
             claims = validator.validate_token(token)
@@ -110,7 +110,7 @@ def required_auth(f):
 
             }
         except Exception as e:
-            return jsonify(ErrorResponse('Token validation failed', request_id = '').model_dump, 500)
+            return jsonify(ErrorResponse(error_message = f'Token validation failed: {str(e)}', request_id = '').model_dump()), 500
         
         # This line will not be reached if any of the exceptions above happened
         return f(*args, **kwargs)

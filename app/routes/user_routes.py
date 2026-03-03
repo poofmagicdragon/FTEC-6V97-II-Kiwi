@@ -4,11 +4,13 @@ import app.service.transaction_service as transaction_service
 import app.service.user_service as user_service
 from app.db import db
 from app.schemas.user_schemas import CreateUserSchema
+from app.auth import required_auth
 
 user_bp = Blueprint('user', __name__)
 
 
 @user_bp.route('/', methods=['GET'])
+@required_auth
 def get_users():
     users = user_service.get_all_users()
     return jsonify([user.__to_dict__() for user in users]), 200
