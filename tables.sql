@@ -76,6 +76,9 @@
 --         ON DELETE CASCADE
 -- );
 -- use kiwilocal2;
-INSERT INTO security VALUES ('AAPL', 'Apple inc', 100);
-INSERT INTO transaction (username, portfolio_id, ticker, transaction_type, quantity, price, date_time) VALUE ('mt', '1', 'AAPL', 'BUY', '1',100, '2022-01-01');
+-- INSERT INTO security VALUES ('AAPL', 'Apple inc', 100);
+-- INSERT INTO transaction (username, portfolio_id, ticker, transaction_type, quantity, price, date_time) VALUE ('mt', '1', 'AAPL', 'BUY', '1',100, '2022-01-01');
 
+-- ALTER TABLE transaction DROP FOREIGN KEY fk_transaction_security;
+use kiwilocal2;
+DELETE FROM user WHERE username = "mt";

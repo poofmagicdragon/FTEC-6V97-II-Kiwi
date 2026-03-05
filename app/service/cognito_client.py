@@ -6,23 +6,28 @@ class CognitoClientError(Exception):
     pass
 
 def get_user_info(access_token: str):
-    try:    
+    try:
         current_app.logger.debug('Fetching user info from Cognito')
+
         region = current_app.config.get('AWS_REGION')
-        url = f'https://cognito-idp.{region}.amazonaws.com/'
+        domain = current_app.config.get('AWS_DOMAIN')
+
+        url = f"https://{domain}.auth.{region}.amazoncognito.com/oauth2/userInfo"
+
         headers = {
-            'Content-Type': 'application/x-amz-json-1.1',
-            'X-Amz-Target': 'AWSCognitoIdentityProviderService.GetUser'
+            "Authorization": f"Bearer {access_token}"
         }
-        body = {'AccessToken': access_token}
-        response = requests.post(url, headers = headers, data = json.dumps(body))
+
+        response = requests.get(url, headers=headers)
         response.raise_for_status()
+
         data = response.json()
-        # {}'UserAttributes'}
-        attributes = {attr['Name']: attr['Value'] for attr in data['UserAttributes']}
-        username = data['Username']
-        current_app.logger.debug('Successfully fetched user info from access token')
-        return {'username':username, 'attributes': attributes}
+
+        username = data.get("username") or data.get("preferred_username") or data.get("sub")
+        attributes = data
+
+        return {"username": username, "attributes": attributes}
+
     except Exception as e:
-        current_app.logger.debug(f'Error fetching user info from token: {str(e)}')
-        raise CognitoClientError(f'Failed to get user info from user token. Error: {str(e)}')
+        current_app.logger.debug(f"Error fetching user info from token: {str(e)}")
+        raise CognitoClientError(f"Failed to get user info from user token. Error: {str(e)}")

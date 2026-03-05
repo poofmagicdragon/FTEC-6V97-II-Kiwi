@@ -13,12 +13,10 @@ from flask_caching import Cache
 from app.db import db
 from app.log.RequestIdFilter import RequestIdFilter
 from app.routes import portfolio_bp, security_bp, trade_bp, user_bp
-from app.routes.domain.response_schema import ErrorResponse
+from app.common.response_schema import ErrorResponse
 from app.auth import CognitoTokenValidator
-from app.config import get_config
-from app.service import user_service
-from app.service.cognito_client import get_user_info
-import app.auth as auth
+#from app.config import get_config
+
 
 cache = Cache()
 
@@ -59,39 +57,39 @@ def create_app(config):  #  = get_config("development")
             g.request_id = str(uuid.uuid4())
             g.start_time = datetime.datetime.now(ZoneInfo('America/New_York'))
             app.logger.info(f'New request ({g.request_id}): @{request.method} {request.host}{request.path}')
-        # # check whether the incoming user is already created in the DB
-        # # if it is then there is nothing to do -> Proceed with the request
-        # # otherwise, create new record for this user in the database (default the balance to 1000) -> Proceed with the request
+        # check whether the incoming user is already created in the DB
+        # if it is then there is nothing to do -> Proceed with the request
+        # otherwise, create new record for this user in the database (default the balance to 1000) -> Proceed with the request
 
-        # # optimization: in order to prevent a database call on every request we will query all users from the db and store in cache
-        # # first we look up the username in the cache if it exists then the user exists in the user table -> proceed with the request
-        # # else this is a new user: 1) create the user 2) query all users again to update cache -> proceed with request
-        #     if cache.get('pre_request_all_users') is None:
-        #         users = user_service.get_all_users()
-        #         cache.set('pre_request_all_users', users, timeout = 60)
-        #     users = cache.get('pre_request_all_users')
-        #     caller_username = g.user['username']
-        #     caller_user = next((u for u in users if u.username == caller_username), None)
-        #     try:
-        #         if not caller_user: # create the user in the database
-        #             token = auth.get_token_from_header()
-        #             if token is None:
-        #                 return jsonify(ErrorResponse(error_message = 'Failed to get info user from token: token does not exist', request_id = g.request_id).model_dump()), 400
+        # optimization: in order to prevent a database call on every request we will query all users from the db and store in cache
+        # first we look up the username in the cache if it exists then the user exists in the user table -> proceed with the request
+        # else this is a new user: 1) create the user 2) query all users again to update cache -> proceed with request
+            # if cache.get('pre_request_all_users') is None:
+            #     users = user_service.get_all_users()
+            #     cache.set('pre_request_all_users', users, timeout = 60)
+            # users = cache.get('pre_request_all_users')
+            # caller_username = g.user['username']
+            # caller_user = next((u for u in users if u.username == caller_username), None)
+            # try:
+            #     if not caller_user: # create the user in the database
+            #         token = auth.get_token_from_header()
+            #         if token is None:
+            #             return jsonify(ErrorResponse(error_message = 'Failed to get info user from token: token does not exist', request_id = g.request_id).model_dump()), 400
                     
-        #             user_info = get_user_info(token)
-        #             username = user_info.get('username')
-        #             firstname = user_info.get('attributes', {}).get('given_name')
-        #             lastname = user_info.get('attributes', {}).get('family_name')
+            #         user_info = get_user_info(token)
+            #         username = user_info.get('username')
+            #         firstname = user_info.get('attributes', {}).get('given_name')
+            #         lastname = user_info.get('attributes', {}).get('family_name')
                     
-        #             user_service.create_user(username, '', firstname, lastname, 1000.00)
-        #             db.session.commit()
+            #         user_service.create_user(username, firstname, lastname, 1000.00)
+            #         db.session.commit()
                     
-        #             users = user_service.get_all_users()
-        #             cache.set('pre_request_all_users', users, timeout = 60)
-        #     except Exception as e:
-        #         error_msg = f'Failed to add user in the database for a new user'
-        #         app.logger.error(error_msg)
-        #         return jsonify(ErrorResponse(error_message = error_msg, request_id = g.request_id)), 500
+            #         users = user_service.get_all_users()
+            #         cache.set('pre_request_all_users', users, timeout = 60)
+            # except Exception as e:
+            #     error_msg = f'Failed to add user in the database for a new user'
+            #     app.logger.error(error_msg)
+            #     return jsonify(ErrorResponse(error_message = error_msg, request_id = g.request_id)), 500
 
 
         @app.after_request
@@ -117,6 +115,7 @@ def create_app(config):  #  = get_config("development")
         @app.errorhandler(Exception)
         def error_handler(e):
             db.session.rollback()
+            print("ERROR:", repr(e))
             error = ErrorResponse(error_message = str(e), request_id = g.request_id)
             return jsonify(error.model_dump()), 500
         

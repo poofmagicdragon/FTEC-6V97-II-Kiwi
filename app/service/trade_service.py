@@ -1,8 +1,8 @@
 import datetime
 
 from app.db import db
-from app.models import Investment, Portfolio, Security, Transaction
-
+from app.models import Investment, Portfolio, Transaction
+from app.service.alpha_vantage_client import get_quote
 
 class TradeExecutionException(Exception):
     pass
@@ -37,10 +37,18 @@ def execute_purchase_order(portfolio_id: int, ticker: str, quantity: int):
         if not user:
             raise TradeExecutionException(f'User associated with the portfolio ({portfolio_id}) does not exist.')
 
-        security = db.session.query(Security).filter_by(ticker=ticker).one_or_none()
-        if not security:
-            raise TradeExecutionException(f'Security with ticker {ticker} does not exist.')
-        total_cost = security.price * quantity
+        # security = db.session.query(Security).filter_by(ticker=ticker).one_or_none()
+        # if not security:
+        #     raise TradeExecutionException(f'Security with ticker {ticker} does not exist.')
+        # total_cost = security.price * quantity
+        # if user.balance < total_cost:
+        #     raise InsufficientFundsError('Insufficient funds to complete the purchase.')
+
+        quote = get_quote(ticker)
+        if not quote or quote.price is None:
+            raise TradeExecutionException(f"Invalid ticker or price unavailable: {ticker}") 
+
+        total_cost = quote.price * quantity
         if user.balance < total_cost:
             raise InsufficientFundsError('Insufficient funds to complete the purchase.')
 
@@ -48,7 +56,7 @@ def execute_purchase_order(portfolio_id: int, ticker: str, quantity: int):
         if existing_investment:
             existing_investment.quantity += quantity
         else:
-            portfolio.investments.append(Investment(ticker=ticker, quantity=quantity, security=security))
+            portfolio.investments.append(Investment(ticker=ticker, quantity=quantity))
 
         user.balance -= total_cost
         db.session.add(
@@ -57,7 +65,7 @@ def execute_purchase_order(portfolio_id: int, ticker: str, quantity: int):
                 username=user.username,
                 ticker=ticker,
                 quantity=quantity,
-                price=security.price,
+                price=quote.price,
                 transaction_type='BUY',
                 date_time=datetime.datetime.now(),
             )
@@ -88,7 +96,7 @@ def liquidate_investment(portfolio_id: int, ticker: str, quantity: int, sale_pri
             raise TradeExecutionException(f'Portfolio with id {portfolio_id} does not exist')
         user = portfolio.user
         investment = next(
-            (inv for inv in portfolio.investments if inv.security.ticker == ticker),
+            (inv for inv in portfolio.investments if inv.ticker == ticker),
             None,
         )
         if not investment:

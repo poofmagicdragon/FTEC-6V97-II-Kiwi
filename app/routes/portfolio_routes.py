@@ -18,6 +18,7 @@ def get_all_portfolios():
 
 
 @portfolio_bp.route('/<int:portfolio_id>', methods=['GET'])
+@required_auth
 def get_portfolio(portfolio_id):
     portfolio = portfolio_service.get_portfolio_by_id(portfolio_id)
     if portfolio is None:
@@ -26,6 +27,7 @@ def get_portfolio(portfolio_id):
 
 
 @portfolio_bp.route('/user/<username>', methods=['GET'])
+@required_auth
 def get_portfolios_by_user(username):
     user = user_service.get_user_by_username(username)
     if user is None:
@@ -35,6 +37,7 @@ def get_portfolios_by_user(username):
 
 
 @portfolio_bp.route('/', methods=['POST'])
+@required_auth
 def create_portfolio():
     req_data = CreatePortfolioSchema(**request.get_json())
     username = req_data.username
@@ -51,6 +54,7 @@ def create_portfolio():
 
 
 @portfolio_bp.route('/<int:portfolio_id>', methods=['DELETE'])
+@required_auth
 def delete_portfolio(portfolio_id):
     portfolio_service.delete_portfolio(portfolio_id)
     db.session.commit()
@@ -58,6 +62,9 @@ def delete_portfolio(portfolio_id):
 
 
 @portfolio_bp.route('/<int:portfolio_id>/transactions', methods=['GET'])
+@required_auth
 def get_portfolio_transactions(portfolio_id):
     transactions = transaction_service.get_transactions_by_portfolio_id(portfolio_id)
     return jsonify([transaction.__to_dict__() for transaction in transactions]), 200
+
+

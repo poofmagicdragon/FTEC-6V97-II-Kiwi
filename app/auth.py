@@ -5,9 +5,15 @@ from jose import jwt
 from jose.exceptions import JWTError, ExpiredSignatureError, JWTClaimsError
 import requests
 
-from app.routes.domain.response_schema import ErrorResponse
+from app.service import user_service
+from app.service.cognito_client import get_user_info
+from app.db import db
+
+from app.service import user_service
+from app.service.cognito_client import get_user_info
 
 
+from app.common.response_schema import ErrorResponse
 
 
 class CognitoTokenValidator:
@@ -102,6 +108,7 @@ def required_auth(f):
             return jsonify(ErrorResponse(error_message = 'Missing cognito token validator in the app configuration', request_id = '').model_dump()), 500
         
         try:
+            from app import cache
             claims = validator.validate_token(token)
             g.user = {
                 'user_id': claims.get('sub'),
@@ -109,6 +116,36 @@ def required_auth(f):
                 'claims': claims
 
             }
+
+            if cache.get('pre_request_all_users') is None:
+                users = user_service.get_all_users()
+                cache.set('pre_request_all_users', users, timeout = 60)
+            users = cache.get('pre_request_all_users')
+            caller_username = g.user['username']
+            caller_user = next((u for u in users if u.username == caller_username), None)
+            try:
+                if not caller_user: # create the user in the database
+                    token = get_token_from_header()
+                    if token is None:
+                        return jsonify(ErrorResponse(error_message = 'Failed to get info user from token: token does not exist', request_id = g.request_id).model_dump()), 400
+                    
+                    user_info = get_user_info(token)
+                    username = user_info.get('username')
+                    firstname = user_info.get('attributes', {}).get('given_name')
+                    lastname = user_info.get('attributes', {}).get('family_name')
+                    
+                    user_service.create_user(username, firstname, lastname, 1000.00)
+                    db.session.commit()
+                    
+                    users = user_service.get_all_users()
+                    cache.set('pre_request_all_users', users, timeout = 60)
+            except Exception as e:
+                error_msg = f'Failed to add user in the database for a new user'
+                current_app.logger.error(error_msg)
+                return jsonify(ErrorResponse(error_message = error_msg, request_id = g.request_id).model_dump()), 500
+            
+
+
         except Exception as e:
             return jsonify(ErrorResponse(error_message = f'Token validation failed: {str(e)}', request_id = '').model_dump()), 500
         

@@ -23,3 +23,4 @@ def get_security(ticker):
 def get_security_transactions(ticker):
     transactions = transaction_service.get_transactions_by_ticker(ticker)
     return jsonify([transaction.__to_dict__() for transaction in transactions]), 200
+

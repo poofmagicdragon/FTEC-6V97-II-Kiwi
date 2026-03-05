@@ -27,6 +27,7 @@ class DevelopmentConfig(Config):
     AWS_REGION = 'us-east-2'
     COGNITO_CLIENT_ID = 'of5ua5id9tb9oi00ibi0u7t2m'
     COGNITO_POOL_ID = 'us-east-2_pLOAUduYI'
+    AWS_DOMAIN = 'kiwitestdomain'
 
 class ProductionConfig(Config):
     SQLALCHEMY_DATABASE_URI = os.environ.get('DATABASE_URL') or (
