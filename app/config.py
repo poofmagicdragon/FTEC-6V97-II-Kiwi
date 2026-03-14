@@ -13,9 +13,11 @@ class TestConfig(Config):
     TESTING = True
     SQLALCHEMY_DATABASE_URI = 'sqlite+pysqlite:///:memory:'
     SQLALCHEMY_ECHO = False
-    AWS_Region = 'dummy'
+    AWS_REGION = 'dummy'
     COGNITO_CLIENT_ID = 'dummy'
     COGNITO_POOL_ID = 'dummy'
+    ALPHA_VANTAGE_API_KEY = ''
+    # ^ this was not here before
 
 
 class DevelopmentConfig(Config):

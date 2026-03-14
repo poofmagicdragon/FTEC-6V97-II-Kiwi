@@ -81,4 +81,18 @@
 
 -- ALTER TABLE transaction DROP FOREIGN KEY fk_transaction_security;
 use kiwilocal2;
-DELETE FROM user WHERE username = "mt";
+
+CREATE TABLE portfoliosecurity (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    portfolio_id INT NOT NULL,
+    username VARCHAR(30) NOT NULL,
+    role VARCHAR(30) NOT NULL,
+
+    CONSTRAINT fk_portfoliosecurity_portfolio
+        FOREIGN KEY (portfolio_id) REFERENCES portfolio(id)
+        ON DELETE CASCADE,
+
+    CONSTRAINT fk_portfoliosecurity_user
+        FOREIGN KEY (username) REFERENCES user(username)
+        ON DELETE CASCADE
+);

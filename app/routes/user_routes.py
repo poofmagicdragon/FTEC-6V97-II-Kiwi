@@ -64,3 +64,5 @@ def delete_user(username):
 def get_user_transactions(username):
     transactions = transaction_service.get_transactions_by_user(username)
     return jsonify([transaction.__to_dict__() for transaction in transactions]), 200
+
+

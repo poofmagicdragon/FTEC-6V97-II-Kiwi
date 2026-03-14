@@ -15,6 +15,7 @@ from app.service.cognito_client import get_user_info
 
 from app.common.response_schema import ErrorResponse
 
+#Authorization 
 
 class CognitoTokenValidator:
     def __init__(self, region: str, user_pool_id: str, client_id: str):
@@ -95,6 +96,7 @@ def get_token_from_header():
     return parts[1]
 
 
+# Authentication
 def required_auth(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
@@ -140,7 +142,7 @@ def required_auth(f):
                     users = user_service.get_all_users()
                     cache.set('pre_request_all_users', users, timeout = 60)
             except Exception as e:
-                error_msg = f'Failed to add user in the database for a new user'
+                error_msg = f'Failed to add user in the database for a new user: {str(e)}'
                 current_app.logger.error(error_msg)
                 return jsonify(ErrorResponse(error_message = error_msg, request_id = g.request_id).model_dump()), 500
             

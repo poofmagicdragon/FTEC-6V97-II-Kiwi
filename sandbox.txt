@@ -143,3 +143,22 @@ code_challenger:YPvXYltS94V_qSiM8C3aWqDkbKiAR_JJXVUC3Bqe9As
 https://kiwitestdomain.auth.us-east-2.amazoncognito.com/oauth2/authorize?response_type=code&client_id=of5ua5id9tb9oi00ibi0u7t2m&redirect_uri=https://jwt.io&scope=openid+email+profile&code_challenge=YPvXYltS94V_qSiM8C3aWqDkbKiAR_JJXVUC3Bqe9As&code_challenge_method=S256
 
 temp_code = 2d89fb4f-249b-41b8-8c47-9233794a3aa1
+
+
+
+Authorization feature
+- Introduce a new portfolio entitlements such that a portfolio owner can allow other users to either view or manage their portfolio
+- a portfolio owner can see their portfolios along with any other portfolios that they have access to
+- a portfolio owner can manage their portfolios along with any portfolios that they ahve manage access to
+- only a portfolio owner  can create/delete a portfolio
+
+Implement:
+- Create a new db table to store portfolio entitlement(portfolio_entitlement)
+- create endpoint to allow owners to provide/revoke different access to their portfolios
+- endpoint that requires authorization will have to check if the user action is permitted before executing
+
+functions that require authorization:
+- Create portfolio function - authorized by owner
+- Delete portfolio function - authorized by owner
+- get portfolio - owner + viewer
+- Sell/Buy endpoints - owner + manager

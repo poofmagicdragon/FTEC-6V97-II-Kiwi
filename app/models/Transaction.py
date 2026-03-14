@@ -23,12 +23,7 @@ class Transaction(db.Model):
     date_time: Mapped[datetime.datetime] = mapped_column(DateTime, nullable=False)
 
     user: Mapped['User'] = relationship('User', back_populates='transactions', foreign_keys=[username], lazy='selectin')
-    portfolio: Mapped['Portfolio'] = relationship(
-        'Portfolio',
-        back_populates='transactions',
-        foreign_keys=[portfolio_id],
-        lazy='selectin',
-    )
+    portfolio: Mapped['Portfolio'] = relationship('Portfolio', back_populates='transactions',foreign_keys=[portfolio_id], lazy='selectin')
 
 
     if TYPE_CHECKING:
