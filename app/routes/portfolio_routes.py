@@ -113,3 +113,43 @@ def add_portfolio_security(portfolio_id):
     portfolio_service.create_portfolio_security(portfolio_id = portfolio_id, username = create_portfolio_security_req.username, role = create_portfolio_security_req.role)
     return jsonify('Portfolio security updated successfully'), 200
 
+
+@portfolio_bp.route("/<int:portfolio_id>/access", methods=["POST"])
+@required_auth
+def grant_portfolio_access(portfolio_id):
+    data = request.get_json() or {}
+    target_username = data.get("username")
+    role = data.get("role")
+
+    if role not in ("viewer", "manager"):
+        return jsonify({"error": "Invalid role"}), 400
+
+    portfolio = portfolio_service.get_portfolio_by_id(portfolio_id)
+    if not portfolio:
+        return jsonify({"error": "Portfolio not found"}), 404
+
+    caller = g.user["username"]
+    if portfolio.owner_username != caller:
+        return jsonify({"error": "Forbidden"}), 403
+
+    portfolio_service.grant_access(portfolio_id, target_username, role)
+
+    return jsonify({"message": "Access granted"}), 200
+
+
+@portfolio_bp.route("/<int:portfolio_id>/access/<string:username>", methods=["DELETE"])
+@required_auth
+def revoke_portfolio_access(portfolio_id, username):
+    portfolio = portfolio_service.get_portfolio_by_id(portfolio_id)
+    if not portfolio:
+        return jsonify({"error": "Portfolio not found"}), 404
+
+    caller = g.user["username"]
+    if portfolio.owner_username != caller:
+        return jsonify({"error": "Forbidden"}), 403
+
+    success = portfolio_service.revoke_access(portfolio_id, username)
+    if not success:
+        return jsonify({"error": "Access not found"}), 404
+
+    return jsonify({"message": "Access revoked"}), 200

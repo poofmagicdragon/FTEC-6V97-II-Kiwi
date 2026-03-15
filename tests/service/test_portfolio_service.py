@@ -1,6 +1,6 @@
 import pytest
 import app.service.portfolio_service as portfolio_service
-from app.models import Investment, Portfolio, User
+from app.models import Investment, Portfolio, User, PortfolioSecurity
 
 @pytest.fixture(autouse=True)
 def setup(db_session):
@@ -88,38 +88,109 @@ def test_delete_portfolio_invalid_id(db_session):
         portfolio_service.delete_portfolio(9999)
 
 
+def test_create_portfolio_security_success(setup, db_session):
+    portfolio = setup["portfolio1"]
+    portfolio_service.create_portfolio_security(portfolio_id=portfolio.id, username="testuser", role="viewer", caller_user=portfolio.owner)
+
+    portsec = db_session.query(PortfolioSecurity).filter_by(portfolio_id=portfolio.id, username="testuser", role="viewer").one_or_none()
+
+    assert portsec is not None
+
+def test_create_portfolio_security_invalid_portfolio(setup, db_session):
+    with pytest.raises(portfolio_service.UnsupportedPortfolioOperationError) as e:
+        portfolio_service.create_portfolio_security(portfolio_id=99, username="testuser", role="viewer", caller_user="testuser")
+
+    assert "No portfolio exists with ID 99" in str(e.value)
+
+def test_create_portfolio_security_not_authorized(setup, db_session):
+    portfolio = setup["portfolio1"]
+    with pytest.raises(portfolio_service.UnsupportedPortfolioOperationError) as e:
+        portfolio_service.create_portfolio_security(portfolio_id=portfolio.id, username="testuser", role="viewer", caller_user="not_owner")
+
+    assert "not authorized" in str(e.value)
+
+def test_create_portfolio_security_unsupported_role(setup, db_session):
+    portfolio = setup["portfolio1"]
+    with pytest.raises(portfolio_service.UnsupportedPortfolioOperationError) as e:
+        portfolio_service.create_portfolio_security(portfolio_id=portfolio.id, username="testuser", role="unsupported_role", caller_user="testuser")
+
+    assert "Unsupported role" in str(e.value)
+
+def test_create_portfolio_security_user_not_found(setup, monkeypatch):
+    portfolio = setup["portfolio1"]
+    monkeypatch.setattr("app.service.user_service.get_user_by_username", lambda username: None)
+
+    with pytest.raises(portfolio_service.UnsupportedPortfolioOperationError) as e:
+        portfolio_service.create_portfolio_security(portfolio_id=portfolio.id, username="ghost_user", role="viewer", caller_user=portfolio.owner)
+
+    assert "does not exist" in str(e.value)
 
 
-# def test_liquidate_investment(setup, db_session):
-#     portfolio = setup["portfolio1"]
-#     portfolio_service.liquidate_investment(portfolio.id, "AAPL", 5, 150.0)
-#     portfolio = db_session.query(Portfolio).filter_by(id=portfolio.id).one()
-#     updated_investment = next((inv for inv in portfolio.investments if inv.ticker == "AAPL"), None)
-#     assert updated_investment is not None
-#     assert updated_investment.quantity == 5
-#     user = db_session.query(User).filter_by(username="testuser").one()
-#     assert user.balance == 1000.0 + (5 * 150.0)
+def test_create_portfolio_db_failure(monkeypatch, setup):
+    user = setup['user']
+    def fake_flush():
+        raise Exception("DB error")
 
-# def test_liquidate_entire_investment(setup, db_session):
-#     portfolio = setup["portfolio1"]
-#     portfolio_service.liquidate_investment(portfolio.id, "AAPL", 10, 150.0)
-#     portfolio = db_session.query(Portfolio).filter_by(id=portfolio.id).one()
-#     updated_investment = next((inv for inv in portfolio.investments if inv.ticker == "AAPL"), None)
-#     assert updated_investment is None
-#     user = db_session.query(User).filter_by(username="testuser").one()
-#     assert user.balance == 1000.0 + (10 * 150.0)
+    monkeypatch.setattr("app.db.session.flush", fake_flush)
 
-# def test_liquidate_investment_invalid_portfolio(db_session):
-#     with pytest.raises(portfolio_service.UnsupportedPortfolioOperationError):
-#         portfolio_service.liquidate_investment(9999, "AAPL", 5, 150.0)
+    with pytest.raises(portfolio_service.PortfolioOperationError) as exc:
+        portfolio_service.create_portfolio("My Portfolio", "Desc", user)
+    assert "Failed to create portfolio due to error: DB error" in str(exc.value)
 
-# def test_liquidate_non_existing_investment(setup, db_session):
-#     portfolio = setup["portfolio1"]
-#     with pytest.raises(portfolio_service.UnsupportedPortfolioOperationError):
-#         portfolio_service.liquidate_investment(portfolio.id, "MSFT", 5, 150.0)
 
-# def test_liquidate_investment_insufficient_quantity(setup, db_session):
-#     portfolio = setup["portfolio1"]
-#     with pytest.raises(portfolio_service.UnsupportedPortfolioOperationError) as e:
-#         portfolio_service.liquidate_investment(portfolio.id, "AAPL", 1000, 150.0)
-#     assert "Cannot liquidate 1000 shares of AAPL. Only 10 shares available in portfolio" in str(e.value)
+def test_get_portfolios_by_user_db_failure(monkeypatch, setup):
+    user = setup['user']
+    def fake_flush(*args, **kwargs):
+        raise Exception("DB error")
+
+    monkeypatch.setattr("app.db.session.query", fake_flush)
+
+    with pytest.raises(portfolio_service.PortfolioOperationError) as exc:
+        portfolio_service.get_portfolios_by_user(user)
+    assert "Failed to retrieve portfolios due to error: DB error" in str(exc.value)
+
+
+def test_get_all_portfolios_db_failure(monkeypatch, setup):
+    user = setup['user']
+    def fake_flush(*args, **kwargs):
+        raise Exception("DB error")
+
+    monkeypatch.setattr("app.db.session.query", fake_flush)
+
+    with pytest.raises(portfolio_service.PortfolioOperationError) as exc:
+        portfolio_service.get_all_portfolios()
+    assert "Failed to retrieve portfolios due to error: DB error" in str(exc.value)
+
+
+def test_get_portfolios_by_id_db_failure(monkeypatch, setup):
+    user = setup['user']
+    def fake_flush(*args, **kwargs):
+        raise Exception("DB error")
+
+    monkeypatch.setattr("app.db.session.query", fake_flush)
+
+    with pytest.raises(portfolio_service.PortfolioOperationError) as exc:
+        portfolio_service.get_portfolio_by_id(user)
+    assert "Failed to retrieve portfolio due to error: DB error" in str(exc.value)
+
+def test_grant_access_success(db_session):
+    access = portfolio_service.grant_access(portfolio_id = 1, username = "testuser", role = "viewer")
+
+    assert access.portfolio_id == 1
+    assert access.username == "testuser"
+    assert access.role == "viewer"
+
+    stored_query = db_session.query(PortfolioSecurity).filter_by(portfolio_id = 1, username = "testuser", role = "viewer").one_or_none()
+
+    assert stored_query is not None
+
+def test_revoke_access_success(db_session):
+    access = portfolio_service.grant_access(portfolio_id = 1, username = "testuser", role = "viewer")
+    db_session.add(access)
+    db_session.commit()
+    result = portfolio_service.revoke_access(1, "testuser")
+    assert result is True
+
+    remaining = db_session.query(PortfolioSecurity).filter_by(portfolio_id = 1, username = "testuser").one_or_none()
+
+    assert remaining is None

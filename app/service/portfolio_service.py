@@ -82,7 +82,36 @@ def create_portfolio_security(portfolio_id: int, username: str, role: str, calle
     db.session.add(portfolio_security)
     db.session.flush()
 
-def remove_portfolio_security():
-    # to be implemented
-    pass
+# def remove_portfolio_security():
+#     # to be implemented
+#     pass
 
+def grant_access(portfolio_id, username, role):
+    access = PortfolioSecurity(
+        portfolio_id=portfolio_id,
+        username=username,
+        role=role
+    )
+    db.session.add(access)
+    db.session.commit()
+    return access
+
+
+def revoke_access(portfolio_id, username):
+    access = PortfolioSecurity.query.filter_by(
+        portfolio_id=portfolio_id,
+        username=username
+    ).first()
+    if access:
+        db.session.delete(access)
+        db.session.commit()
+        return True
+    return False
+
+
+def user_has_role(username, portfolio_id, role):
+    return PortfolioSecurity.query.filter_by(
+        portfolio_id=portfolio_id,
+        username=username,
+        role=role
+    ).first() is not None

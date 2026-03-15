@@ -102,12 +102,12 @@ def required_auth(f):
     def decorated_function(*args, **kwargs):
         token = get_token_from_header()
         if not token:
-            return jsonify(ErrorResponse(error_message = 'Missing authentication Token', request_id = '').model_dump()), 401
+            return jsonify(ErrorResponse(error_message = 'Missing authentication Token', request_id = '').model_dump()), 403
         
         validator = current_app.config.get('COGNITO_VALIDATOR')
 
         if not validator:
-            return jsonify(ErrorResponse(error_message = 'Missing cognito token validator in the app configuration', request_id = '').model_dump()), 500
+            return jsonify(ErrorResponse(error_message = 'Missing cognito token validator in the app configuration', request_id = '').model_dump()), 403
         
         try:
             from app import cache
@@ -129,7 +129,7 @@ def required_auth(f):
                 if not caller_user: # create the user in the database
                     token = get_token_from_header()
                     if token is None:
-                        return jsonify(ErrorResponse(error_message = 'Failed to get info user from token: token does not exist', request_id = g.request_id).model_dump()), 400
+                        return jsonify(ErrorResponse(error_message = 'Failed to get info user from token: token does not exist', request_id = g.request_id).model_dump()), 403
                     
                     user_info = get_user_info(token)
                     username = user_info.get('username')

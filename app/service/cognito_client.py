@@ -1,6 +1,7 @@
 import requests
 import json
 
+
 from flask import current_app
 class CognitoClientError(Exception):
     pass
@@ -31,3 +32,5 @@ def get_user_info(access_token: str):
     except Exception as e:
         current_app.logger.debug(f"Error fetching user info from token: {str(e)}")
         raise CognitoClientError(f"Failed to get user info from user token. Error: {str(e)}")
+
+    

@@ -1,7 +1,8 @@
 import pytest
-from unittest.mock import patch, MagicMock
-from app.models import User, Portfolio, PortfolioSecurity, Transaction
 import datetime
+from types import SimpleNamespace
+from app.models import User, Portfolio, PortfolioSecurity, Transaction
+from app.service.alpha_vantage_client import get_company_name, get_price_data
 
 @pytest.fixture(autouse=True)
 def setup(db_session):
@@ -190,3 +191,131 @@ def test_add_portfolio_security_success(client, setup, monkeypatch, mock_alpha_v
     assert called["portfolio_id"] == portfolio.id
     assert called["username"] == "viewer_user"
     assert called["role"] == "viewer"
+
+def test_get_company_name_cache_hit(monkeypatch):
+    class FakeCache:
+        def get(self, key):
+            return "Microsoft Corporation"
+
+    monkeypatch.setattr(
+        "app.service.alpha_vantage_client._get_cache",
+        lambda: FakeCache()
+    )
+
+    result = get_company_name("MSFT")
+
+    assert result == "Microsoft Corporation"
+
+def test_get_price_data_cache_hit(monkeypatch, app):
+    from app.service.alpha_vantage_client import get_price_data
+    class FakeCache:
+        def get(self, key):
+            return {"price": 123.45, "date": "2024-01-01"}
+
+    monkeypatch.setattr(
+        "app.service.alpha_vantage_client._get_cache",
+        lambda: FakeCache()
+    )
+
+    with app.app_context():
+        result = get_price_data("AAPL")
+
+    assert result == {"price": 123.45, "date": "2024-01-01"}
+
+def test_get_price_data_returns_none(monkeypatch, app):
+    class FakeCache:
+        def get(self, key):
+            return None
+        def set(self, key, value, timeout=None):
+            pass
+
+    class FakeResponse:
+        def json(self):
+            return {}
+
+    def fake_requests_get(url, params):
+        return FakeResponse()
+
+    monkeypatch.setattr("app.service.alpha_vantage_client._get_cache", lambda: FakeCache())
+    monkeypatch.setattr("app.service.alpha_vantage_client._get_api_key", lambda: "demo")
+    monkeypatch.setattr("app.service.alpha_vantage_client.requests.get", fake_requests_get)
+
+    with app.app_context():
+        result = get_price_data("AAPL")
+
+    assert result is None
+
+def test_get_company_name_returns_none(monkeypatch, app):
+    class FakeCache:
+        def get(self, key):
+            return None
+        def set(self, key, value, timeout=None):
+            pass
+
+    class FakeResponse:
+        def json(self):
+            return {"bestMatches": []}  
+        def raise_for_status(self):
+            pass
+
+    def fake_requests_get(url, params, timeout):
+        return FakeResponse()
+
+    monkeypatch.setattr("app.service.alpha_vantage_client._get_cache", lambda: FakeCache())
+    monkeypatch.setattr("app.service.alpha_vantage_client._get_api_key", lambda: "demo")
+    monkeypatch.setattr("app.service.alpha_vantage_client.requests.get", fake_requests_get)
+
+    with app.app_context():
+        result = get_company_name("MSFT")
+
+    assert result is None
+
+
+
+def test_grant_portfolio_access_success(app, client, monkeypatch):
+    class FakePortfolio:
+        owner_username = "owner123"
+
+    monkeypatch.setattr(
+        "app.routes.portfolio_routes.portfolio_service.get_portfolio_by_id",
+        lambda pid: FakePortfolio()
+    )
+
+    called = {"grant": False}
+
+    def fake_grant_access(pid, username, role):
+        called["grant"] = True
+
+    monkeypatch.setattr("app.routes.portfolio_routes.portfolio_service.grant_access", fake_grant_access)
+    monkeypatch.setattr("app.routes.portfolio_routes.g", SimpleNamespace(user={"username": "owner123"}))
+
+    response = client.post(
+        "/portfolios/1/access",
+        json={"username": "bob", "role": "viewer"}
+    )
+
+    assert response.status_code == 200
+    assert called["grant"] is True
+
+
+
+def test_revoke_portfolio_access_success(app, client, monkeypatch):
+    class FakePortfolio:
+        owner_username = "owner123"
+
+    monkeypatch.setattr("app.routes.portfolio_routes.portfolio_service.get_portfolio_by_id", lambda pid: FakePortfolio())
+    called = {"revoke": False}
+
+    def fake_revoke_access(pid, username):
+        called["revoke"] = True
+        return True
+
+    monkeypatch.setattr("app.routes.portfolio_routes.portfolio_service.revoke_access", fake_revoke_access)
+    monkeypatch.setattr("app.routes.portfolio_routes.g", SimpleNamespace(user={"username": "owner123"}))
+
+    response = client.delete("/portfolios/1/access/bob")
+
+    assert response.status_code == 200
+    assert called["revoke"] is True
+
+

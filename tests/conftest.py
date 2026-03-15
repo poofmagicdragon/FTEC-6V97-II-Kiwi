@@ -12,7 +12,7 @@ sys.path.insert(0, str(project_root))
 
 import app.db as db
 import pytest
-from app.auth import CognitoTokenValidator
+from app.auth import CognitoTokenValidator, required_auth
 from app.service.alpha_vantage_client import SecurityQuote
 
 
@@ -24,6 +24,9 @@ from app import create_app
 def app() -> Generator[Flask, None, None]:
     test_config = get_config("test")
     app = create_app(test_config)
+
+
+
     cognito_validator = CognitoTokenValidator(
         region = app.config['AWS_REGION'],
         user_pool_id = app.config['COGNITO_POOL_ID'],
@@ -31,6 +34,7 @@ def app() -> Generator[Flask, None, None]:
     )
     app.config['COGNITO_VALIDATOR'] = cognito_validator
     with app.app_context():
+        
         db.create_all()
         yield app
         db.session.remove()

@@ -103,7 +103,7 @@ def get_company_name(ticker: str) -> str | None:
     except Exception as e:
         msg = f'Error fetching company name for {ticker}. [Error type: {type(e).__name__} | Error: {str(e)}]'
         current_app.logger.error(msg)
-        raise AlphaVantageError(msg)
+        return None
 
 
 def get_price_data(ticker: str) -> dict | None:
@@ -134,7 +134,7 @@ def get_price_data(ticker: str) -> dict | None:
         global_quote = data.get('Global Quote', {})
         if not global_quote:
             current_app.logger.warning(f'No quote data found for ticker: {ticker}')
-            raise InvalidTickerError(f'No quote data available for {ticker}')
+            return None
 
         price = float(global_quote.get('05. price', 0))
         date = global_quote.get('07. latest trading day', '')
@@ -153,7 +153,7 @@ def get_price_data(ticker: str) -> dict | None:
     except Exception as e:
         msg = f'Error fetching price data for {ticker}. [Error type: {type(e).__name__} | Error: {str(e)}]'
         current_app.logger.error(msg)
-        raise AlphaVantageError(msg)
+        return None
 
 
 def get_quote(ticker: str) -> SecurityQuote | None:
