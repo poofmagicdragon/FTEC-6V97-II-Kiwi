@@ -8,7 +8,7 @@ if TYPE_CHECKING:
     from app.models import User, Portfolio
 
 class PortfolioSecurity(db.Model):
-    __tablename__ = 'portfolio_security'
+    __tablename__ = 'portfoliosecurity'
     id: Mapped[int] = mapped_column(Integer, primary_key = True, autoincrement = True)
     portfolio_id: Mapped[int] = mapped_column(Integer, ForeignKey('portfolio.id'), nullable = False)
     username: Mapped[str] = mapped_column(String(30), ForeignKey('user.username'), nullable = False)

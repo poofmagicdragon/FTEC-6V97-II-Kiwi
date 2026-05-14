@@ -38,3 +38,12 @@ class Investment(db.Model):
 
     def __str__(self):
         return f'<Investment: id={self.id}; portfolio id={self.portfolio_id}; quantity={self.quantity}; portfolio={self.portfolio}>'
+
+
+    def __to_dict__(self):
+        return {
+            "id": self.id,
+            "quantity": self.quantity,
+            "ticker": self.ticker,
+            "portfolio_id": self.portfolio_id
+        }

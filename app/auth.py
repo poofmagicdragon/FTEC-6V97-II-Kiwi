@@ -9,10 +9,6 @@ from app.service import user_service
 from app.service.cognito_client import get_user_info
 from app.db import db
 
-from app.service import user_service
-from app.service.cognito_client import get_user_info
-
-
 from app.common.response_schema import ErrorResponse
 
 #Authorization 
@@ -34,7 +30,7 @@ class CognitoTokenValidator:
             response = requests.get(self._jwks_url)
             response.raise_for_status()
             self._jwks = response.json()
-        pass 
+        return self._jwks 
 
     def _get_signing_key(self, token: str):
         '''
@@ -149,7 +145,7 @@ def required_auth(f):
 
 
         except Exception as e:
-            return jsonify(ErrorResponse(error_message = f'Token validation failed: {str(e)}', request_id = '').model_dump()), 500
+            return jsonify(ErrorResponse(error_message = f'Token validation failed: {str(e)}', request_id = '').model_dump()), 403
         
         # This line will not be reached if any of the exceptions above happened
         return f(*args, **kwargs)

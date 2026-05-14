@@ -128,7 +128,6 @@ def get_price_data(ticker: str) -> dict | None:
 
         _check_rate_limit(data)
 
-        print("RAW GLOBAL QUOTE:", data)
 
         # Extract quote data
         global_quote = data.get('Global Quote', {})

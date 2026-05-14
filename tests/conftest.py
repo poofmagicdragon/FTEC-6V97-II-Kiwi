@@ -82,7 +82,7 @@ def mock_authentication(app, monkeypatch):
     if validator is not None:
         monkeypatch.setattr(validator, 'validate_token', mock_validate)
 
-    # ⭐ Mock get_user_info so it never calls Cognito
+    # Mock get_user_info so it never calls Cognito
     monkeypatch.setattr(
         "app.auth.get_user_info",
         lambda token: {

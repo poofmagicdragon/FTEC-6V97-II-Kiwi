@@ -8,6 +8,7 @@ from app.schemas.portfolio_schemas import CreatePortfolioSchema
 from app.auth import required_auth
 from app.common.request_schema import PortfolioSecurityRequestData
 from app.common.response_schema import ErrorResponse
+from app.models.Investment import Investment
 
 portfolio_bp = Blueprint('portfolio', __name__)
 
@@ -67,7 +68,7 @@ def get_portfolios_by_user(username):
 @required_auth
 def create_portfolio():
     req_data = CreatePortfolioSchema(**request.get_json())
-    username = req_data.username
+    username = g.user["username"]
     user = user_service.get_user_by_username(username)
     if user is None:
         current_app.logger.debug('some error happened at this line...')
@@ -88,6 +89,7 @@ def delete_portfolio(portfolio_id):
     caller_username = g.user['username']
 
     portfolio = portfolio_service.get_portfolio_by_id(portfolio_id)
+    
     if portfolio is None:
         return jsonify(ErrorResponse(error_message=f'Portfolio with ID {portfolio_id} does not exist', request_id=g.request_id).model_dump()), 404
 
@@ -110,7 +112,7 @@ def get_portfolio_transactions(portfolio_id):
 @required_auth
 def add_portfolio_security(portfolio_id):
     create_portfolio_security_req = PortfolioSecurityRequestData(**request.json)
-    portfolio_service.create_portfolio_security(portfolio_id = portfolio_id, username = create_portfolio_security_req.username, role = create_portfolio_security_req.role)
+    portfolio_service.create_portfolio_security(portfolio_id = portfolio_id, username = create_portfolio_security_req.username, role = create_portfolio_security_req.role, caller_user=g.user['username'])
     return jsonify('Portfolio security updated successfully'), 200
 
 
@@ -129,7 +131,7 @@ def grant_portfolio_access(portfolio_id):
         return jsonify({"error": "Portfolio not found"}), 404
 
     caller = g.user["username"]
-    if portfolio.owner_username != caller:
+    if portfolio.owner != caller:
         return jsonify({"error": "Forbidden"}), 403
 
     portfolio_service.grant_access(portfolio_id, target_username, role)
@@ -145,11 +147,23 @@ def revoke_portfolio_access(portfolio_id, username):
         return jsonify({"error": "Portfolio not found"}), 404
 
     caller = g.user["username"]
-    if portfolio.owner_username != caller:
+    if portfolio.owner != caller:
         return jsonify({"error": "Forbidden"}), 403
 
     success = portfolio_service.revoke_access(portfolio_id, username)
     if not success:
         return jsonify({"error": "Access not found"}), 404
+    
+    db.session.commit()
 
     return jsonify({"message": "Access revoked"}), 200
+
+
+
+
+@portfolio_bp.route('/<int:portfolio_id>/holdings', methods=['GET'])
+@required_auth
+def get_portfolio_holdings(portfolio_id):
+    investments = Investment.query.filter_by(portfolio_id=portfolio_id).all()
+    return jsonify([inv.__to_dict__() for inv in investments])
+

@@ -5,6 +5,7 @@ from app.service import trade_service, portfolio_service
 from app.schemas.trade_schemas import ExecuteBuySchema, ExecuteSellSchema
 from app.common.response_schema import ErrorResponse
 from app.auth import required_auth
+from app.service.trade_service import TradeExecutionException
 
 trade_bp = Blueprint('trade', __name__)
 

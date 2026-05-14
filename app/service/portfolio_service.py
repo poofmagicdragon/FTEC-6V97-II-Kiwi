@@ -1,7 +1,7 @@
 from typing import List
 
 from app.db import db
-from app.models import Portfolio, User, PortfolioSecurity
+from app.models import Portfolio, User, PortfolioSecurity, Investment
 from app.service import user_service
 
 
@@ -58,6 +58,9 @@ def get_portfolio_by_id(portfolio_id: int) -> Portfolio | None:
 def delete_portfolio(portfolio_id: int):
     try:
         portfolio = db.session.query(Portfolio).filter_by(id=portfolio_id).one_or_none()
+        holdings = db.session.query(Investment).filter_by(portfolio_id=portfolio_id).all()
+        if len(holdings) > 0:
+            raise UnsupportedPortfolioOperationError(f'Cannot delete a portfolio that still has holdings')
         if not portfolio:
             raise UnsupportedPortfolioOperationError(f'Portfolio with id {portfolio_id} does not exist')
         db.session.delete(portfolio)
@@ -102,11 +105,12 @@ def revoke_access(portfolio_id, username):
         portfolio_id=portfolio_id,
         username=username
     ).first()
-    if access:
-        db.session.delete(access)
-        db.session.commit()
-        return True
-    return False
+
+    if not access:
+        return None
+    
+    db.session.delete(access)
+    return access
 
 
 def user_has_role(username, portfolio_id, role):
