@@ -8,19 +8,16 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.db import db
 
 if TYPE_CHECKING:
-    from app.models import Portfolio, Security
+    from app.models import Portfolio
 
 
 class Investment(db.Model):
     __tablename__ = 'investment'
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     quantity: Mapped[int] = mapped_column(Integer, nullable=False)
-    ticker: Mapped[str] = mapped_column(String(10), ForeignKey('security.ticker'))
+    ticker: Mapped[str] = mapped_column(String(10))
     portfolio_id: Mapped[int] = mapped_column(Integer, ForeignKey('portfolio.id'))
 
-    security: Mapped['Security'] = relationship(
-        'Security', foreign_keys=[ticker], back_populates='investments', lazy='selectin'
-    )
 
     portfolio: Mapped['Portfolio'] = relationship(
         'Portfolio',
@@ -36,9 +33,17 @@ class Investment(db.Model):
             self,
             *,
             quantity: int | None = None,
-            ticker: str | None = None,
-            security: Security | None = None,
+            ticker: str | None = None
         ) -> None: ...
 
     def __str__(self):
         return f'<Investment: id={self.id}; portfolio id={self.portfolio_id}; quantity={self.quantity}; portfolio={self.portfolio}>'
+
+
+    def __to_dict__(self):
+        return {
+            "id": self.id,
+            "quantity": self.quantity,
+            "ticker": self.ticker,
+            "portfolio_id": self.portfolio_id
+        }

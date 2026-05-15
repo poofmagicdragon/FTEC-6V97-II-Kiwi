@@ -8,7 +8,7 @@ from app.db import db
 
 if TYPE_CHECKING:
     # imports that are used only for type checking to avoid circular dependencies
-    from app.models import Portfolio, Security, User
+    from app.models import Portfolio, User
 
 
 class Transaction(db.Model):
@@ -16,25 +16,15 @@ class Transaction(db.Model):
     transaction_id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     username: Mapped[str] = mapped_column(String(30), ForeignKey('user.username'), nullable=False)
     portfolio_id: Mapped[int] = mapped_column(Integer, ForeignKey('portfolio.id'), nullable=False)
-    ticker: Mapped[str] = mapped_column(String(30), ForeignKey('security.ticker'), nullable=False)
+    ticker: Mapped[str] = mapped_column(String(30), nullable=False)
     transaction_type: Mapped[str] = mapped_column(String(10), nullable=False)
     quantity: Mapped[int] = mapped_column(Integer, nullable=False)
     price: Mapped[float] = mapped_column(Float, nullable=False)
     date_time: Mapped[datetime.datetime] = mapped_column(DateTime, nullable=False)
 
     user: Mapped['User'] = relationship('User', back_populates='transactions', foreign_keys=[username], lazy='selectin')
-    portfolio: Mapped['Portfolio'] = relationship(
-        'Portfolio',
-        back_populates='transactions',
-        foreign_keys=[portfolio_id],
-        lazy='selectin',
-    )
-    security: Mapped['Security'] = relationship(
-        'Security',
-        back_populates='transactions',
-        foreign_keys=[ticker],
-        lazy='selectin',
-    )
+    portfolio: Mapped['Portfolio'] = relationship('Portfolio', back_populates='transactions',foreign_keys=[portfolio_id], lazy='selectin')
+
 
     if TYPE_CHECKING:
 

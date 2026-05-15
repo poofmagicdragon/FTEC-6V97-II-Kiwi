@@ -3,17 +3,21 @@ from flask import Blueprint, jsonify, request
 import app.service.transaction_service as transaction_service
 import app.service.user_service as user_service
 from app.db import db
+from app.schemas.user_schemas import CreateUserSchema
+from app.auth import required_auth
 
 user_bp = Blueprint('user', __name__)
 
 
 @user_bp.route('/', methods=['GET'])
+@required_auth
 def get_users():
     users = user_service.get_all_users()
     return jsonify([user.__to_dict__() for user in users]), 200
 
 
 @user_bp.route('/<username>', methods=['GET'])
+@required_auth
 def get_user(username):
     user = user_service.get_user_by_username(username)
     if user is None:
@@ -22,21 +26,22 @@ def get_user(username):
 
 
 @user_bp.route('/', methods=['POST'])
+@required_auth
 def create_user():
-    req_data = request.get_json()
-    username = req_data['username']
-    password = req_data['password']
-    firstname = req_data['firstname']
-    lastname = req_data['lastname']
-    balance = req_data['balance']
+    req_data = CreateUserSchema(**request.get_json())
+    username = req_data.username
+    firstname = req_data.firstname
+    lastname = req_data.lastname
+    balance = req_data.balance
     user_service.create_user(
-        username=username, password=password, firstname=firstname, lastname=lastname, balance=balance
+        username=username, firstname=firstname, lastname=lastname, balance=balance
     )
     db.session.commit()
     return jsonify({'message': 'User created successfully'}), 201
 
 
 @user_bp.route('/update-balance', methods=['PUT'])
+@required_auth
 def update_balance():
     req_data = request.get_json()
     username = req_data['username']
@@ -47,6 +52,7 @@ def update_balance():
 
 
 @user_bp.route('/<username>', methods=['DELETE'])
+@required_auth
 def delete_user(username):
     user_service.delete_user(username)
     db.session.commit()
@@ -54,6 +60,9 @@ def delete_user(username):
 
 
 @user_bp.route('/<username>/transactions', methods=['GET'])
+@required_auth
 def get_user_transactions(username):
     transactions = transaction_service.get_transactions_by_user(username)
     return jsonify([transaction.__to_dict__() for transaction in transactions]), 200
+
+

@@ -1,0 +1,164 @@
+aws cognito-idp create-user-pool \
+  --pool-name Kiwidemo \
+  --policies PasswordPolicy='{
+      MinimumLength=8,
+      RequireUppercase=true,
+      RequireLowercase=true,
+      RequireNumbers=true,
+      RequireSymbols=false}' \
+  --auto-verified-attributes email \
+  --region us-east-2
+
+
+  aws cognito-idp create-user-pool-client \
+  --user-pool-id us-east-2_nvcA2OL9j \
+  --client-name kiwidemo \
+  --no-generate-secret \
+  --allowed-o-auth-flows code \
+  --allowed-o-auth-scopes openid email profile \
+  --allowed-o-auth-flows-user-pool-client \
+  --supported-identity-providers COGNITO \
+  --callback-urls "https://jwt.io" \
+  --logout-urls "https://jwt.io" \
+  --explicit-auth-flows ALLOW_USER_SRP_AUTH ALLOW_REFRESH_TOKEN_AUTH \
+  --region us-east-2
+
+
+aws cognito-idp create-user-pool-domain \
+  --domain "kiwidomain" \
+  --user-pool-id "us-east-2_nvcA2OL9j"
+
+User Pool ID = us-east-2_nvcA2OL9j
+Client ID = 7o1cnmbvg5t8bh295q2igp7buk
+domain = kiwidomain
+code_verifier: uz7j5D96VAmXXWpcTfHqYDKQe6do3KWToeReDyARRWQ
+code_challenger:-wOst0rW-wfOnERcO7zW3bKZXSRG6nZuwyF5xe0qvn8
+
+
+At this point we have a user pool and a client that allows us to interface with the user pool
+
+https://cognito-idp.us-east-2.amazonaws.com/us-east-2_nvcA2OL9j/.well-known/jwks.json
+
+How do we generate an access token?
+
+Workflow:
+1. Access the login page, enter a username + Password (code challenge)
+2. Page will redirect to the url that we provided at setup + attach a special code in the url query parameter
+3. Take this code and make another API call to Cognito and exchange the code with the token (code_verifier)
+
+
+
+Step 1: Login
+
+https://kiwidomain.auth.us-east-2.amazoncognito.com/oauth2/authorize?response_type=code&client_id=7o1cnmbvg5t8bh295q2igp7buk&redirect_uri=https://jwt.io&scope=openid+email+profile&code_challenge=-wOst0rW-wfOnERcO7zW3bKZXSRG6nZuwyF5xe0qvn8&code_challenge_method=S256
+
+aws cognito-idp describe-user-pool-client --user-pool-id us-east-2_YW8i6Bb0Y --client-id bjs7552b5iak6j2bnn46p3nsm
+
+Temp auth code: 8910a6d2-f92d-4cd3-8705-95f8e4966782
+
+Step 2 : how do we exchange the code for a token
+Make an API call to Cognito to exchange the auth code (giving also the code verifier) with an access token
+
+When attaching a token to the HTTP request, the standard practice is that we attach a header called authorization with a value Bearer <token>
+header: Authorization = Bearer <token_string>
+
+POST request with url:
+https://kiwidemodomain.auth.us-east-2.amazoncognito.com/oauth2/token
+Body:
+x-www-form-urlencoded
+
+client_id
+code (this is the temp authorization code from the jwt url)
+code_verifier
+grant_type = authorization_code
+redirect_uri = https://jwt.io
+
+Access Token (example):
+eyJraWQiOiJhR2hMeGtDZEx2WWhvRG1KMUV2XC9FTk9McjVGWkNVbVpsem1cLzUxcGNXMnc9IiwiYWxnIjoiUlMyNTYifQ <- Token header
+.eyJzdWIiOiJkMTViYzUyMC04MDgxLTcwNjItNTliOC0wMzczMTJmNTdlNmQiLCJpc3MiOiJodHRwczpcL1wvY29nbml0by1pZHAudXMtZWFzdC0yLmFtYXpvbmF3cy5jb21cL3VzLWVhc3QtMl9ZVzhpNkJiMFkiLCJ2ZXJzaW9uIjoyLCJjbGllbnRfaWQiOiJianM3NTUyYjVpYWs2ajJibm40NnAzbnNtIiwib3JpZ2luX2p0aSI6IjM1NDVhMTM0LTQzZGQtNDQ0OS1hZDhkLTc2ZjZhZmRiMGZjYiIsInRva2VuX3VzZSI6ImFjY2VzcyIsInNjb3BlIjoib3BlbmlkIHByb2ZpbGUgZW1haWwiLCJhdXRoX3RpbWUiOjE3NzE5Njc3NzMsImV4cCI6MTc3MTk3MTM3MywiaWF0IjoxNzcxOTY3NzczLCJqdGkiOiIyYzhmYzQzZS05MTI3LTQ1MzgtYWQ2Ny1kYjExMTlhNGJkOTEiLCJ1c2VybmFtZSI6Ik1SVDE5MDAwNCJ9 <- Token body
+.FXnotXyDL5a4A9XWoG7gmtbZRVTW8Ad0_D5k1UDWZM2Re4_k36BU5dZEypxCEBtVmovG-hLk07MpqUO9C0boYI9KopjYBS2ghMZB-8sj6e985oMO5GaOrueSVkITFUVYUlVmU-UUzHQOaz65F_l6a5ZVn7Ew_hGmtTlVxfvLEgXtH-dblf12JwoZbv_yXHbH8deLizYvZQo5cAlG1VegpbLXiHkOUFuH879A5jbFE-KWGsxxM_S_BUh_M04NzfpJQAPC6bnK2j27yzjaUDBUag7CU87jksTqoAkjmC7tRlvPhEgx5nlRj9Hk8x1mq8ujRJnDQsQT2NfSxbT2VZmtKQ <- Token signature
+
+When attaching a token to the HTTP request the standard practice is that we 
+
+-----------------------------------------------------------
+
+aws cognito-idp create-user-pool \
+  --pool-name kiwitestdemo \
+  --policies 'PasswordPolicy={
+      MinimumLength=8,
+      RequireUppercase=true,
+      RequireLowercase=true,
+      RequireNumbers=true,
+      RequireSymbols=false}' \
+  --auto-verified-attributes email \
+  --schema '[
+    {
+      "Name": "email",
+      "AttributeDataType": "String",
+      "Required": true,
+      "Mutable": true
+    },
+    {
+      "Name": "given_name",
+      "AttributeDataType": "String",
+      "Required": true,
+      "Mutable": true
+    },
+    {
+      "Name": "family_name",
+      "AttributeDataType": "String",
+      "Required": true,
+      "Mutable": true
+    }
+  ]' \
+  --region us-east-2
+
+
+  aws cognito-idp create-user-pool-client \
+  --user-pool-id us-east-2_pLOAUduYI \
+  --client-name kiwitestclient \
+  --no-generate-secret \
+  --allowed-o-auth-flows code \
+  --allowed-o-auth-scopes openid email profile aws.cognito.signin.user.admin\
+  --allowed-o-auth-flows-user-pool-client \
+  --supported-identity-providers COGNITO \
+  --callback-urls "https://jwt.io" \
+  --logout-urls "https://jwt.io" \
+  --explicit-auth-flows ALLOW_USER_SRP_AUTH ALLOW_REFRESH_TOKEN_AUTH \
+  --region us-east-2
+
+aws cognito-idp create-user-pool-domain \
+  --domain kiwitestdomain \
+  --user-pool-id us-east-2_pLOAUduYI \
+  --region us-east-2
+
+https://cognito-idp.us-east-2.amazonaws.com/us-east-2_pLOAUduYI/.well-known/jwks.json
+
+User pool ID = us-east-2_pLOAUduYI
+Client ID = of5ua5id9tb9oi00ibi0u7t2m
+code_verifier: ieM86SPqLN9BkKDSg1UztirDBcSarrbHh4pD_1NIb6E
+code_challenger:YPvXYltS94V_qSiM8C3aWqDkbKiAR_JJXVUC3Bqe9As
+
+
+https://kiwitestdomain.auth.us-east-2.amazoncognito.com/oauth2/authorize?response_type=code&client_id=of5ua5id9tb9oi00ibi0u7t2m&redirect_uri=https://jwt.io&scope=openid+email+profile&code_challenge=YPvXYltS94V_qSiM8C3aWqDkbKiAR_JJXVUC3Bqe9As&code_challenge_method=S256
+
+temp_code = 2d89fb4f-249b-41b8-8c47-9233794a3aa1
+
+
+
+Authorization feature
+- Introduce a new portfolio entitlements such that a portfolio owner can allow other users to either view or manage their portfolio
+- a portfolio owner can see their portfolios along with any other portfolios that they have access to
+- a portfolio owner can manage their portfolios along with any portfolios that they ahve manage access to
+- only a portfolio owner  can create/delete a portfolio
+
+Implement:
+- Create a new db table to store portfolio entitlement(portfolio_entitlement)
+- create endpoint to allow owners to provide/revoke different access to their portfolios
+- endpoint that requires authorization will have to check if the user action is permitted before executing
+
+functions that require authorization:
+- Create portfolio function - authorized by owner
+- Delete portfolio function - authorized by owner
+- get portfolio - owner + viewer
+- Sell/Buy endpoints - owner + manager

@@ -9,17 +9,28 @@ class Config:
     pass
 
 
+
 class TestConfig(Config):
     TESTING = True
     SQLALCHEMY_DATABASE_URI = 'sqlite+pysqlite:///:memory:'
     SQLALCHEMY_ECHO = False
+    AWS_REGION = 'dummy'
+    COGNITO_CLIENT_ID = 'dummy'
+    COGNITO_POOL_ID = 'dummy'
+    ALPHA_VANTAGE_API_KEY = ''
 
 
 class DevelopmentConfig(Config):
-    SQLALCHEMY_DATABASE_URI = 'mysql+pymysql://root:kiwirootdb@localhost:3306/kiwilocal'
+    SQLALCHEMY_DATABASE_URI = 'insert here'
     DEBUG = True
     SQLALCHEMY_ECHO = True
-
+    ALPHA_VANTAGE_BASE_URL = "https://www.alphavantage.co"
+    ALPHA_VANTAGE_API_KEY = 'insert here'
+    AWS_REGION = 'insert here'
+    COGNITO_CLIENT_ID = 'insert here'
+    COGNITO_POOL_ID = 'insert here'
+    AWS_DOMAIN = 'insert here'
+    
 
 class ProductionConfig(Config):
     SQLALCHEMY_DATABASE_URI = os.environ.get('DATABASE_URL') or (

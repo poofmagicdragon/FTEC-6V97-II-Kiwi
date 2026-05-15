@@ -9,7 +9,7 @@ from app.db import db
 
 if TYPE_CHECKING:
     # imports that are used only for type checking to avoid circular dependencies
-    from app.models import Investment, Transaction, User
+    from app.models import Investment, Transaction, User, PortfolioSecurity
 
 
 class Portfolio(db.Model):
@@ -25,6 +25,8 @@ class Portfolio(db.Model):
 
     transactions: Mapped[List['Transaction']] = relationship('Transaction', back_populates='portfolio', lazy='selectin')
 
+    portfolio_securities: Mapped[List['PortfolioSecurity']] = relationship('PortfolioSecurity', back_populates = 'portfolio', lazy= 'selectin')
+
     # this is needed because PyLance cannot infer the constructor signature from SQLAlchemy's Mapped class
     if TYPE_CHECKING:
 
@@ -32,6 +34,7 @@ class Portfolio(db.Model):
             self,
             *,
             name: str | None = None,
+            owner: str | None = None,
             user: User | None = None,
             description: str | None = None,
             id: int | None = None,

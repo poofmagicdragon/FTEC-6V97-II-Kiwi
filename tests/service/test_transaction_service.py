@@ -2,11 +2,12 @@ import datetime
 import pytest
 from app.models import User, Portfolio, Transaction
 from app.service import transaction_service
+from app.db import db
 
 @pytest.fixture(autouse=True)
 def setup(db_session):
     # create a test user
-    test_user = User(username='testuser', password='testpass', firstname='Test', lastname='User', balance=1000.00)
+    test_user = User(username='testuser', firstname='Test', lastname='User', balance=1000.00)
     db_session.add(test_user)
     db_session.commit()
     # create a test portfolio
@@ -39,19 +40,48 @@ def setup(db_session):
         'portfolio': test_portfolio
     }
 
-def test_get_transactions_by_user(setup, db_session):
+def test_get_transactions_by_user(setup):
     user = setup['user']
     transactions = transaction_service.get_transactions_by_user(user.username)
     assert len(transactions) == 2
     assert all(tx.username == user.username for tx in transactions)
 
-def test_get_transactions_by_portfolio(setup, db_session):
+
+
+def test_get_transactions_by_portfolio(setup):
     portfolio = setup['portfolio']
     transactions = transaction_service.get_transactions_by_portfolio_id(portfolio.id)
     assert len(transactions) == 2
     assert all(tx.portfolio_id == portfolio.id for tx in transactions)
 
-def test_get_transactions_by_ticker(setup, db_session):
+def test_get_transactions_by_ticker():
     transactions = transaction_service.get_transactions_by_ticker('AAPL')
     assert len(transactions) == 1
     assert transactions[0].ticker == 'AAPL'
+
+def test_get_transactions_by_user_rollback(setup, monkeypatch):
+    def database_exception(*args, **kwargs):
+        raise Exception("Database error")
+    
+    monkeypatch.setattr(db.session, "query", database_exception)
+    with pytest.raises(Exception):
+        transaction_service.get_transactions_by_user("testuser")
+
+def test_get_transactions_by_portfolio_id_rollback(setup, monkeypatch):
+    def database_exception(*args, **kwargs):
+        raise Exception("Database error")
+    
+    monkeypatch.setattr(db.session, "query", database_exception)
+    with pytest.raises(Exception):
+        transaction_service.get_transactions_by_portfolio_id("testuser")
+
+def test_get_transactions_by_ticker_rollback(setup, monkeypatch):
+    def database_exception(*args, **kwargs):
+        raise Exception("Database error")\
+    
+    monkeypatch.setattr(db.session, "query", database_exception)
+    with pytest.raises(Exception):
+        transaction_service.get_transactions_by_ticker("testuser")
+
+
+
